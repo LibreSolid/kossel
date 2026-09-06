@@ -82,11 +82,11 @@ class TowerTest(TestCase):
         # The pulley is cut a tenth inside the belt, which on a 56 degree
         # flank is a twentieth of a millimetre of play: about a fifth of a
         # degree at this pitch radius.
-        # The perturbation is inserted before the pulley's placement
-        # translation and after its turn onto the shaft, so its axis is
-        # the shaft's direction in the tower's frame: the radial Y.
-        self.assertFreeWithin(self.node.pulley, 0.2, self.node.belt, axis=(0, 1, 0))
-        self.assertBlockedBeyond(self.node.pulley, 2.0, self.node.belt, axis=(0, 1, 0))
+        # The perturbation turns the pulley about its own axis, local Z,
+        # before its turn onto the shaft carries that axis to the
+        # tower's radial Y.
+        self.assertFreeWithin(self.node.pulley, 0.2, self.node.belt)
+        self.assertBlockedBeyond(self.node.pulley, 2.0, self.node.belt)
 
     def test_the_pulley_and_idlers_sit_on_their_shafts(self):
         self.assertNotIntersecting(self.node.pulley, self.node.motor)

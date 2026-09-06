@@ -173,8 +173,10 @@ class KosselTest(TestCase):
             carriage, switch = tower.carriage.carriage, tower.endstop.switch
             self.assertNotIntersecting(carriage, switch)
             self.assertNotIntersecting(tower.carriage.block, switch)
-            self.assertFreeWithin(carriage, 0.3, switch, along=(0, 0, 1), directions='forward')
-            self.assertBlockedBeyond(carriage, 1.2, switch, along=(0, 0, 1), directions='forward')
+            # Up the tower is the carriage's own +Y: it is drawn flat with
+            # its horns along +Y, and its quarter turn carries that up.
+            self.assertFreeWithin(carriage, 0.3, switch, along=(0, 1, 0), directions='forward')
+            self.assertBlockedBeyond(carriage, 1.2, switch, along=(0, 1, 0), directions='forward')
 
     # -- bed-mount --------------------------------------------------------------
 
@@ -200,9 +202,11 @@ class KosselTest(TestCase):
     def test_the_motor_lies_in_its_cradle(self):
         extruder = self.node.extruder
         self.assertNotIntersecting(extruder.motor, extruder.bracket)
-        self.assertFreeWithin(extruder.motor, 0.02, extruder.bracket, along=(0, 0, -1),
+        # Into the cradle is the motor's own +X: its quarter turn about Y
+        # carries that to the extruder's -Z.
+        self.assertFreeWithin(extruder.motor, 0.02, extruder.bracket, along=(1, 0, 0),
                               directions='forward')
-        self.assertBlockedBeyond(extruder.motor, 0.3, extruder.bracket, along=(0, 0, -1),
+        self.assertBlockedBeyond(extruder.motor, 0.3, extruder.bracket, along=(1, 0, 0),
                                  directions='forward')
         self.assertNotIntersecting(extruder.body, extruder.motor)
         self.assertGap(extruder.body, extruder.motor, 0.03, 0.2)
