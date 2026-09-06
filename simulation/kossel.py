@@ -15,11 +15,12 @@ redrawn from where their carriages hold them, three pulleys turned.
 import math
 
 from solid_node.math import asin, cos, sin
+from solid_node.mechanisms import delta_carriage, delta_rod
 from solid_node.node import AssemblyNode
 from solid_node.parameters import Length
 from solid_node.simulation import Driver, Instruction
 
-from simulation import hardware, kinematics, layout
+from simulation import hardware, layout
 from simulation.bed import Bed
 from simulation.bowden import BowdenTube, Filament
 from simulation.effector import EffectorAssembly
@@ -200,13 +201,12 @@ class Kossel(AssemblyNode):
         self.connect(melt - entry[2], self.filament.melt_z)
 
         for index, (tower, angle) in enumerate(zip(self.towers, TOWER_ANGLES)):
-            height = kinematics.carriage_height(
-                self.x, self.y, plane, self.diagonal_rod, self.delta_radius, angle)
+            height = delta_carriage(self.x, self.y, self.diagonal_rod,
+                                    self.delta_radius, angle, plane=plane)
             self.connect(height, tower.height)
 
-            tilt = kinematics.rod_tilt(self.x, self.y, self.diagonal_rod,
-                                       self.delta_radius, angle)
-            azimuth = kinematics.rod_azimuth(self.x, self.y, self.delta_radius, angle)
+            tilt, azimuth = delta_rod(self.x, self.y, self.diagonal_rod,
+                                      self.delta_radius, angle)
             spin = asin(sin(azimuth - angle) * cos(tilt))
             ux, uy = radial(angle)
             vx, vy = tangential(angle)
