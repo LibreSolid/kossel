@@ -1,0 +1,5 @@
+[tool.solid-node]
+model = "simulation.kossel:Kossel"
+
+[tool.libresolid-studio]
+profile = "builder"

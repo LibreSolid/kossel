@@ -6,3 +6,9 @@
 *.png
 *.jpg
 *~
+
+# solid-node build artifacts
+_build*
+__pycache__/
+.env
+snapshot.png
