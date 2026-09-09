@@ -9,7 +9,8 @@ block, and with it the belt's teeth and the pulley and idlers they run
 over; everything else is frame.
 """
 
-from solid_node.node import AssemblyNode, TranslationalPort
+from solid_node.node import AssemblyNode
+from solid_node.motion.ports import TranslationalPort
 from solid_node.parameters import Length
 
 from simulation import hardware, layout

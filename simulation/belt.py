@@ -16,7 +16,7 @@ side, and that is the span the carriage's clamp is anchored on.
 import math
 
 from molejo import P, Shape, Wrap
-from solid_node.node import TranslationalPort
+from solid_node.motion.ports import TranslationalPort
 from solid_node.parameters import Length
 
 from simulation import gt2, hardware

@@ -20,7 +20,8 @@ difference a real tube takes up in its bow is not drawn.
 """
 
 from molejo import Circle, Line, P, Shape, Spline
-from solid_node.node import MolejoNode, TranslationalPort
+from solid_node.node import MolejoNode
+from solid_node.motion.ports import TranslationalPort
 
 from simulation import hardware, materials
 from simulation.layout import EXTRUDER_ENTRY_Z
