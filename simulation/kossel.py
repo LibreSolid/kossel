@@ -15,7 +15,7 @@ redrawn from where their carriages hold them, three pulleys turned.
 import math
 
 from solid_node.math import asin, cos, sin
-from solid_node.mechanisms import delta_carriage as _delta_carriage, delta_rod as _delta_rod
+from solid_node_mechanics import delta_carriage as _delta_carriage, delta_rod as _delta_rod
 from solid_node.node import AssemblyNode
 from solid_node.parameters import Length
 from solid_node.simulation import Driver, Instruction
@@ -75,7 +75,7 @@ def _toward(angle, radius, z):
 #: copy repeated four times for the second, `.repeat()`'s own broadcast
 #: calling each once per copy -- and returns a `forward` of exactly the
 #: three source VALUES, in written order, giving back one value or the
-#: four in written order.  `solid_node.mechanisms.delta_carriage` and
+#: four in written order.  `solid_node_mechanics.delta_carriage` and
 #: `delta_rod` stay the prescribed law of three drivers over three
 #: towers; only the class-level connect() loop that fed them by hand is
 #: gone.

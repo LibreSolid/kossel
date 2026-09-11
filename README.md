@@ -69,7 +69,7 @@ lean from vertical, swing toward the effector, rise with its carriage)
 effector's three coordinates directly, and, several sources at once
 (`solid-node`'s ADR-100), the same three drive every tower's height and
 every rod's four freedoms through the delta kinematics
-(`solid_node.mechanisms.delta_carriage`/`delta_rod`), the law called
+(`solid_node_mechanics.delta_carriage`/`delta_rod`), the law called
 once per copy under `.repeat()`'s own broadcast.  Each tower's carriage
 block in turn drives its own belt clamp and pulley by two more laws, an
 affine reading of `Loop.anchor`/`Loop.pulley_angle`.  Only the two idler
