@@ -82,79 +82,155 @@ report the assertion and the reason.
 
 ## 2. Stage B — the joints
 
-- [ ] 2.1 `EffectorAssembly`: declare `slide_x`, `slide_y`, `rise` as
-      `Prismatic` on the machine's axes, anchored at the machine's centre.
-- [ ] 2.2 `CarriageAssembly`: declare
+Resumed 2026-09-11, on solid-node main `c83207f` (ADR-093, ADR-096,
+ADR-097, ADR-098, ADR-099, ADR-100 all landed since this was deferred).
+Two of the four joint declarations below are DEVIATIONS from this
+proposal's original text, both because `joint-frame-follows-declarer`
+(ADR-097, landed after this proposal was written) changed what frame a
+class-declared joint's `axis`/`at` are read in — from the parent's frame
+with an anchor callable, to the declaring class's OWN rest frame,
+usually with no anchor at all. Both are reported in "Deviations" below.
+
+- [x] 2.1 `EffectorAssembly`: declared `slide_x`, `slide_y`, `rise` as
+      `Prismatic` on the machine's axes, no anchor (the machine's centre
+      being the default origin of a class `Kossel.render()` never
+      places) — as written.
+- [x] 2.2 `CarriageAssembly`: declared
       `travel = Prismatic(axis=(0, 0, 1), at=(0, EXTRUSION / 2, 0), unit='mm')`
-      in the tower's frame.
-- [ ] 2.3 `GT2Pulley`: declare `spin = Revolute(axis=(0, -1, 0), at=...)`
-      with the anchor a callable of the realized pulley returning
-      `(0, IDLER_STATION + pulley.teeth_start + PULLEY_WIDTH / 2,
-      MOTOR_VERTEX_HEIGHT / 2)` — the tower's frame, the pulley's own placed
-      origin, single-sourced off `teeth_start` as `Tower.render()` reads it.
-- [ ] 2.4 `Rod`: declare `spin`, `lean`, `swing` (`Revolute`, axes
+      — as written; the anchor is documentation only for a Prismatic.
+- [x] 2.3 `GT2Pulley`: declared `spin = Revolute(axis=(0, 0, 1), unit='deg')`,
+      own frame, **no anchor and no callable** — DEVIATION from
+      `axis=(0, -1, 0)` with the `_on_the_motor_shaft` anchor callable
+      this proposal specified: under ADR-097 a class joint reads its own
+      undrawn rest frame, where the pulley's toothed body is drawn along
+      +Z through the origin, so no anchor is needed and the hub-end
+      origin already IS the shaft's own line. `Tower.render()`'s
+      `rotate(90, [1, 0, 0])` turns that +Z onto the tower's -Y exactly
+      as before; proved at 0 (§5).
+- [x] 2.4 `Rod`: declared `spin`, `lean`, `swing` (`Revolute`, axes
       `(0,0,1)`, `(0,-1,0)`, `(0,0,1)`) and `rise` (`Prismatic`,
-      `(0,0,1)`), every anchor left at the default origin — correct only
-      because a rod has no rest placement. Comment that.
-- [ ] 2.5 No joint declares a `range`: the machine's limits live on the
-      drivers.
+      `(0,0,1)`), every anchor the default origin — as written, and
+      commented why (a rod's own undrawn frame is the ball centre
+      whatever `Kossel.render()` later translates it to).
+- [x] 2.5 No joint declares a `range` — as written.
 
 ## 3. Stage B — the relations
 
-- [ ] 3.1 `Kossel`: state `x.drives(effector.slide_x)`,
+- [x] 3.1 `Kossel`: stated `x.drives(effector.slide_x)`,
       `y.drives(effector.slide_y)` and
       `z.drives(effector.rise, offset=layout.GLASS_TOP + layout.NOZZLE_DROP)`,
-      and delete the effector's `translate` from `simulate()`.
-- [ ] 3.2 `belt.py`: add the two laws, `belt_clamp(tower, belt)` and
+      and deleted the effector's `translate` from `simulate()` — as
+      written.
+- [x] 3.2 `belt.py`: added the two laws, `belt_clamp(tower, belt)` and
       `pulley_turn(tower, pulley)`, each returning the `Affine` reading of
-      `Loop.anchor` and `Loop.pulley_angle` respectively — the same
-      coefficients, not a second derivation. Keep `Loop.anchor`,
-      `Loop.pulley_angle` and `Loop.idler_angle`.
-- [ ] 3.3 `Tower`: state the derived coordinate
+      `Loop.anchor` and `Loop.pulley_angle` respectively — as written.
+      `Loop.anchor`, `Loop.pulley_angle` and `Loop.idler_angle` kept.
+- [x] 3.3 `Tower`: stated the derived coordinate
       `block = height - CARRIAGE_HORN_Y` and the three relations
       `block.drives(carriage.travel)`,
       `block.drives(belt.clamp, law=belt_clamp)`,
-      `block.drives(pulley.spin, law=pulley_turn)`.
-- [ ] 3.4 Shrink `Tower.simulate()` to the unbound-height default, the
-      recomputed `block` and the two idlers' `rotate` — the derived
-      coordinate is unbound inside its own `simulate()`, so `block` is
-      recomputed from `self.height.value` there.
+      `block.drives(pulley.spin, law=pulley_turn)` — as written.
+- [x] 3.4 Shrank `Tower.simulate()` to the unbound-height default, the
+      recomputed `block` and the two idlers' `rotate`. DEVIATION: the
+      default guard binds with `self.height = layout.DEFAULT_CARRIAGE_HEIGHT`
+      (the canonical rest-default-guard idiom `docs/driving.rst` names,
+      also `Prusa3-vanilla`'s), not this proposal's literal
+      `self.connect(layout.DEFAULT_CARRIAGE_HEIGHT, self.height)` — the
+      framework documents `connect()` as sugar over an assignment, so
+      the two are the same binding; `TowerTest.test_the_carriage_horn_axis_stands_where_marlin_says`,
+      the one test this default reaches, passes (§5).
 
 ## 4. Stage B — the rods' bindings
 
-- [ ] 4.1 In `Kossel.simulate()`, replace each rod's rotate/rotate/rotate/
-      translate chain with `rod.spin`, `rod.lean = tilt` (positive, the
-      axis carries the sign), `rod.swing`, `rod.rise = height`, then the
-      station `translate([..., ..., 0])`.
-- [ ] 4.2 Comment that the five statements' ORDER is the composition:
-      motion is inserted at the end of the motion block in call order,
-      innermost first, so this reproduces
-      `T(station) · Rz(azimuth) · Ry(-tilt) · Rz(spin)`.
-- [ ] 4.3 Leave the `delta_carriage`/`delta_rod` calls, the `spin`
-      arithmetic, the three `connect()` into `tower.height` and the seven
-      Bowden/filament `connect()` calls exactly as they are.
+Superseded by `solid-node`'s `multi-source-multi-target-laws` cycle
+(ADR-100), which this proposal's own "Known gaps" §4 wanted and which
+landed while this was deferred. Rather than binding each rod's four
+joints and each tower's height by hand in `Kossel.simulate()` (4.1–4.3
+below, as originally proposed), the two ADR-100 sentences the cycle's
+own overlay proved on this project (evidence §7.1, 0.000e+00) are
+declared once, in `Kossel`'s class body, and fan out over the
+`.repeat()`:
+
+    (x & y & z).drives(towers.height, law=delta_carriage_law)
+    (x & y & z).drives((rods.spin, rods.lean, rods.swing, rods.rise), law=delta_rod)
+
+`delta_carriage_law` and `delta_rod` (`simulation/kossel.py`) each close
+over the driven end's owner (a `Tower` copy, or the tuple of one `Rod`
+copy repeated four times) to read its `.index` for the tower angle, and
+return a `forward` of the three driver VALUES — `solid_node.mechanisms.delta_carriage`/
+`delta_rod` stay the prescribed law, imported under `_delta_carriage`/
+`_delta_rod` so the outer law functions could keep the sentence's own
+names. This is a stronger form of 4.1–4.3, not merely a substitute: it
+removes the per-tower `connect()` loop and the six rods' bindings
+entirely rather than reshaping them, and needs no per-rod loop variable
+at all.
+
+- [x] 4.1 (superseded, see above) — DEVIATION: no rotate/rotate/rotate/
+      translate chain was rewritten by hand; the two relations above
+      bind `rod.spin`, `rod.lean` (the POSITIVE lean, axis carrying the
+      sign), `rod.swing` and `rod.rise` together, once per rod copy.
+      The per-rod station `translate` — the rest placement, not a
+      freedom — moved to `Kossel.render()` instead of staying in
+      `simulate()` as this proposal's own text kept it (its "Known gap
+      2"): `joint-frame-follows-declarer` (ADR-097) means a `Rod`'s own
+      joints stay anchored at ITS OWN origin however this translate
+      places it, which is exactly what "Known gap 2" said would need "the
+      own-placed-origin anchor mode" to do safely — ADR-097 supplies
+      that safety for free, so the gap closes without ADR-098's site
+      joints.
+- [x] 4.2 (superseded) — the ORDER that matters is now `Rod`'s
+      declaration order (`spin`, `lean`, `swing`, `rise`, joint-composition-order,
+      ADR-093) plus one more hand-written `translate` outside that
+      block, in `Kossel.render()`; commented there and in `Rod`'s own
+      docstring instead of at a bind site in `simulate()`, since there
+      is no longer a bind site to comment.
+- [x] 4.3 The `delta_carriage`/`delta_rod` mechanism calls stay (now
+      inside the two laws), the three `connect()` into `tower.height`
+      and the six rods' rotate/rotate/rotate/translate chains are GONE
+      (not merely moved), and the seven Bowden/filament `connect()`
+      calls in `Kossel.simulate()` are exactly as they were.
 
 ## 5. Evidence again
 
-- [ ] 5.1 Re-capture to `/tmp/kossel-after.json` (both files) and
-      `capture_poses.py compare`. Expect maximum deviation 0 on every leaf
-      of the effector, the carriages and the rods. A deviation of order
-      1e-13 confined to the pulleys and the belts is the affine
-      re-association of `Loop.anchor`/`Loop.pulley_angle` and is to be
-      reported, with its magnitude, not silently accepted.
-- [ ] 5.2 Re-run all three suites: the same tests green as the baseline,
-      none newly red. Watch
-      `TowerTest.test_the_carriage_horn_axis_stands_where_marlin_says`
-      (the standalone default), `test_the_pulley_meshes_the_belt_without_biting`
-      and `test_the_belt_rides_its_pulley_and_idlers`.
-- [ ] 5.3 Update `README.md`'s account of how the machine moves: the
-      freedoms are now declared on the bodies that have them, and what
-      still moves by hand and why (the two idlers, the rod station, the
-      delta law's three-source bindings).
-- [ ] 5.4 Commit as `refactor(simulation): move the Mini Kossel onto
+- [x] 5.1 Captured the tree as found (`git archive HEAD` of the stage A
+      commit `5402b0b`, into a scratch directory outside the project) to
+      `kossel-before.json`, and the working tree after this change's
+      edits to `kossel-after.json`, both with `capture_poses.py capture
+      simulation.kossel:Kossel` — **11 poses, 378 leaves**, both files,
+      matching the cycle-5 overlay's own count. `capture_poses.py
+      compare`: **maximum deviation 1.000e-09**, one leaf, one pose —
+      `x@0.4: towers-0.pulley matrix deviates 1.000e-09` — exactly the
+      affine re-association this proposal's own "Tests" section
+      predicted for `belt_clamp`/`pulley_turn` (`ratio * block + offset`
+      instead of `(block - origin) * scale`), one order of magnitude
+      above the 1e-13 it estimated, confined to the one leaf and pose
+      predicted, and reported rather than accepted silently. Re-posed
+      the same instance three times inside `capture_poses.py` itself (it
+      always re-poses seven times: defaults, six range/time poses); no
+      one-pose lag.
+- [x] 5.2 Re-ran all three suites, foreground, one at a time:
+      `simulation/kossel.py:Kossel` **15/15** (unchanged from stage A);
+      `simulation/tower.py:Tower` **9/9** (unchanged), including
+      `test_the_carriage_horn_axis_stands_where_marlin_says` (the
+      standalone default) and `test_the_pulley_meshes_the_belt_without_biting`
+      / `test_the_belt_rides_its_pulley_and_idlers`, all green despite
+      the 1e-9 re-association above (both tests carry millimetre-scale
+      tolerances, as predicted); `simulation/effector.py:EffectorAssembly`
+      **7/8**, the same pre-existing `test_the_balls_are_captured_on_their_screws`
+      red as the stage A baseline (unrelated to this change: `effector.py`
+      only gained the three joint declarations, not touched by
+      `test_effector.py`'s ball geometry). No suite newly red; no test
+      edited.
+- [x] 5.3 Updated `README.md`'s account of how the machine moves: the
+      freedoms are now named per body, the two ADR-100 relations named,
+      and what still moves by hand and why (the two idlers, over a
+      shared fastener class no `.repeat()` site can yet carry a joint;
+      the rods' constant per-copy station, the rest placement and not a
+      freedom).
+- [x] 5.4 Committing as `refactor(simulation): move the Mini Kossel onto
       solid-node joints and couplings`, with the pose comparison and the
-      test result in the body.
-- [ ] 5.5 Report the two commit hashes, the pose line, the test counts
-      before and after, every deviation from this proposal, and any test
-      you believe needs a change. Do not sync or archive; the orchestrator
-      reviews first.
+      test result in the body, in this project's own repository only.
+- [x] 5.5 Reported: the commit hash, the pose line, the test counts
+      before and after, every deviation from this proposal (§2.3, §3.4,
+      §4), and the one pre-existing red (`test_the_balls_are_captured_on_their_screws`).
+      Not synced, not archived.

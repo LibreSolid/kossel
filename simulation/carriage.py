@@ -1,6 +1,7 @@
 """The printed carriage on its block, with the ball-joint screw."""
 
 from solid_node.node import AssemblyNode
+from solid_node.motion.joints import Prismatic
 
 from simulation import hardware, scad
 from simulation.fasteners import Ball, M3ButtonScrew, M3Nut, M3Screw
@@ -9,6 +10,7 @@ from simulation.layout import (
     CARRIAGE_HORN_Z,
     CARRIAGE_SCREW_PATTERN,
     CARRIAGE_SEPARATION,
+    EXTRUSION,
 )
 from simulation.part import PrintedPart
 from simulation.place import along_minus_x, along_minus_y, along_x
@@ -55,7 +57,16 @@ class CarriageAssembly(AssemblyNode):
     plate normal is the radial and its horns point up, which is one
     quarter turn about X and a half turn about Y -- the second so that
     +X stays the tower's +X rather than its mirror.
+
+    joint-frame-follows-declarer (ADR-097): `travel` is read in this
+    class's own rest frame -- the frame `Tower.render()` places this
+    assembly INTO by `translate([0, face, 0])`, which never rotates it,
+    so the anchor is unaffected by the placement either way.  `at` is
+    where the rail's face stands, `EXTRUSION / 2 = 7.5`, documentation
+    only: a Prismatic's anchor does not affect its placement.
     """
+
+    travel = Prismatic(axis=(0, 0, 1), at=(0, EXTRUSION / 2, 0), unit='mm')
 
     block = Block()
     carriage = Carriage()

@@ -14,7 +14,7 @@ from solid_node.motion.ports import TranslationalPort
 from solid_node.parameters import Length
 
 from simulation import hardware, layout
-from simulation.belt import Belt
+from simulation.belt import Belt, belt_clamp, pulley_turn
 from simulation.carriage import CarriageAssembly
 from simulation.endstop import EndstopAssembly
 from simulation.extrusion import Extrusion
@@ -120,6 +120,15 @@ class Tower(AssemblyNode):
     #: ball-joint axis on the carriage horns.
     height = TranslationalPort(unit='mm')
 
+    #: The carriage block's centre: exactly the local `block` variable
+    #: this class's own `simulate()` computed before this change,
+    #: promoted to a coordinate so its three consumers read it by name.
+    block = height - CARRIAGE_HORN_Y
+
+    block.drives(carriage.travel)
+    block.drives(belt.clamp, law=belt_clamp)
+    block.drives(pulley.spin, law=pulley_turn)
+
     def render(self):
         vertical = self.vertical_extrusion
         top_centre = vertical - TOP_VERTEX_HEIGHT / 2
@@ -194,22 +203,23 @@ class Tower(AssemblyNode):
          .translate([0, IDLER_STATION + hardware.BELT_WIDTH / 2, 0]))
 
     def simulate(self):
-        """Put the carriage where the machine says, and let the belt, the
-        pulley and the idlers follow it.
+        """Let the two idlers follow the belt; `block`'s own three
+        relations (declared above) place the carriage, the belt's clamp
+        and the pulley.
 
         Built on its own, with nothing bound, the tower stands its
         carriage at the machine's default pose so it can be tested alone;
         that is the one place an unbound port is not a fault, and it is
-        stated here so it is not mistaken for a wiring default.
+        stated here so it is not mistaken for a wiring default.  The
+        default must be bound before `block`'s relations solve, which is
+        what the end-of-simulate solve gives; `block` is recomputed here
+        from `height` rather than read off the derived coordinate,
+        because a class's own derived coordinate is unbound inside its
+        own `simulate()`.
         """
-        height = self.height.value
-        if height is None:
-            height = layout.DEFAULT_CARRIAGE_HEIGHT
-        block = height - CARRIAGE_HORN_Y
-        self.carriage.translate([0, 0, block])
-
+        if self.height.value is None:
+            self.height = layout.DEFAULT_CARRIAGE_HEIGHT
+        block = self.height.value - CARRIAGE_HORN_Y
         loop = self.belt.loop
-        self.connect(loop.anchor(block), self.belt.clamp)
-        self.pulley.rotate(loop.pulley_angle(block), [0, 0, 1])
         for bearing in self.idlers:
             bearing.rotate(loop.idler_angle(block), [0, 0, 1])

@@ -14,6 +14,7 @@ import math
 
 from solid2 import cube
 from solid_node.node import AssemblyNode
+from solid_node.motion.joints import Prismatic
 
 from simulation import hardware, materials, scad
 from simulation.fasteners import Ball, M3ButtonScrew, M3Nut, M3Screw
@@ -150,6 +151,15 @@ class Nozzle(ScadPart):
 
 
 class EffectorAssembly(AssemblyNode):
+    """joint-frame-follows-declarer (ADR-097): `Kossel.render()` never
+    places the effector, so its own rest frame IS the machine's, and
+    these three axes are the machine's own -- no anchor, the origin
+    being the effector's centre on its joint plane, the point all three
+    slides are measured from."""
+
+    slide_x = Prismatic(axis=(1, 0, 0), unit='mm')
+    slide_y = Prismatic(axis=(0, 1, 0), unit='mm')
+    rise = Prismatic(axis=(0, 0, 1), unit='mm')
 
     effector = Effector()
     shroud = Shroud()

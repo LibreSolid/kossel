@@ -392,3 +392,43 @@ declared on one body. This is the fifth sighting of that gap, recorded in
 DECLARATION order, innermost first, whatever order they are bound in."
 Stage B waits for that primitive. Stage A — the import fix, the baseline,
 and the captured poses — is committed so the project runs meanwhile.
+
+## Stage B, done (2026-09-11)
+
+Five stacked solid-node cycles landed on main (`c83207f`) since the
+deferral: joint composition order (ADR-093), a relation broadcasting
+over a `.repeat()` child (ADR-096), a joint stated in its declarer's own
+frame (ADR-097), a joint declared at a child's placement site (ADR-098),
+whole-tree fixpoint resolution (ADR-099) and, last, a relation naming
+several coordinates at either end (ADR-100) — the primitive this
+proposal's own "Known gap 4" wanted by name:
+`(x, y, z).drives(towers.height, law=delta_carriage_law)`.
+
+Stage B is implemented as this proposal describes, section "The joints
+to declare" and "The relations to state", with the ADR-100 primitive
+used for BOTH prescribed-law bindings this project has, superseding
+this proposal's own "The rods' bindings" section (§4 of `tasks.md`):
+
+    (x & y & z).drives(towers.height, law=delta_carriage_law)
+    (x & y & z).drives((rods.spin, rods.lean, rods.swing, rods.rise), law=delta_rod)
+
+replacing the per-tower `connect(height, tower.height)` loop and the six
+rods' rotate/rotate/rotate/translate chains entirely — not reshaping
+them, removing them — with two class-body sentences in `Kossel`, fanned
+out by ADR-096's own broadcast once per `.repeat()` copy. These are
+exactly the two sentences `solid-node`'s own `multi-source-multi-target-laws`
+cycle measured against this project's tree as its evidence §7.1, at
+**maximum deviation 0.000e+00** on a read-only overlay outside this
+repository. Implementing them here, in the repository, on solid-node
+main `c83207f`, reproduces that same 0 to the leaf and rod, save one
+1.000e-09 floating-point re-association on one pulley in one pose
+(`x@0.4: towers-0.pulley`) that this proposal's own "Tests" section
+already predicted for `belt_clamp`/`pulley_turn`'s affine form — see
+`tasks.md` §5.1 for the exact numbers, and §2.3/§3.4/§4 for every
+deviation from this proposal's literal text (all of them either an
+ADR-097 simplification the proposal predates, or a documented-idiom
+substitution proved equivalent by the passing test it would have
+broken).
+
+`openspec/changes/move-onto-motion/` is NOT archived: the orchestrator
+reviews first, per this proposal's own original closing instruction.

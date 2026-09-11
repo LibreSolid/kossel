@@ -16,6 +16,7 @@ side, and that is the span the carriage's clamp is anchored on.
 import math
 
 from molejo import P, Shape, Wrap
+from solid_node.motion.couplings import Affine
 from solid_node.motion.ports import TranslationalPort
 from solid_node.parameters import Length
 
@@ -91,6 +92,28 @@ class Loop:
         side of the loop."""
         riding = hardware.BEARING_623[1] / 2
         return self.anchor(height) / riding * 180 / math.pi
+
+
+def belt_clamp(tower, belt):
+    """The law for `Tower.block.drives(belt.clamp, ...)`: `Loop.anchor`
+    -- `(block - clamp_origin) * clamp_scale` -- read as an affine, so
+    the relation stays invertible."""
+    loop = belt.loop
+    return Affine(ratio=loop.clamp_scale, offset=-loop.clamp_origin * loop.clamp_scale)
+
+
+def pulley_turn(tower, pulley):
+    """The law for `Tower.block.drives(pulley.spin, ...)`: `Loop.pulley_angle`
+    -- `(pulley_phase - anchor(block) / reach)` in degrees -- read as an
+    affine, the same coefficients `Loop.pulley_angle` derives, not a
+    second derivation of them."""
+    loop = Loop(tower.vertical_extrusion)
+    reach = loop.pulley_radius + gt2.PITCH_LINE
+    degrees = 180 / math.pi
+    return Affine(
+        ratio=-degrees * loop.clamp_scale / reach,
+        offset=degrees * (loop.pulley_phase
+                          + loop.clamp_origin * loop.clamp_scale / reach))
 
 
 class Belt(gt2.Belt):

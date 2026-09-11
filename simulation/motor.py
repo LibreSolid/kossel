@@ -3,6 +3,7 @@
 import math
 
 from solid2 import polygon
+from solid_node.motion.joints import Revolute
 from solid_node.parameters import Count, Length
 
 from simulation import gt2, hardware, materials, scad
@@ -32,7 +33,20 @@ class GT2Pulley(ScadPart):
     and a flange either side of the teeth.  Drawn along +Z from the hub
     end, so that turned onto a shaft pointing at the tower the hub is
     against the motor and the teeth are out at the belt.
+
+    joint-frame-follows-declarer (ADR-097): `spin` is read in the
+    pulley's OWN rest frame -- the shaft it is drawn about, +Z, no
+    anchor because the hub end sits on this class's own origin.
+    `Tower.render()` turns that +Z onto its own -Y
+    (`rotate(90, [1, 0, 0])`) before translating it to the shaft's
+    station; the joint composes inside that placement, so binding
+    `spin` reproduces byte-for-byte what
+    `self.pulley.rotate(loop.pulley_angle(block), [0, 0, 1])` drew
+    today, that hand rotation already being read in the pulley's own
+    frame (the same pre-existing rule ADR-098 names for hand motion).
     """
+
+    spin = Revolute(axis=(0, 0, 1), unit='deg')
 
     color = materials.ALUMINIUM
 

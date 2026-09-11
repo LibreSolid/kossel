@@ -61,12 +61,25 @@ flexible parts (three GT2 belts, the Bowden tube, the filament).  The
     solid build --set tower_radius=150.0
 
 The drivers are the printer's coordinates: `x` and `y` over the glass,
-`z` the nozzle above it.  The three carriage heights follow from the
-delta kinematics, the six rods swing to join the horns, the belts are
-redrawn from where their carriages hold them and the pulleys turn.  The
-instructions `Home`, `Center`, `Bed`, `TowerX`, `TowerY` and `TowerZ`
-move the head.  Towers are named and placed as Marlin names and places
-them: X at 210 degrees, Y at 330, Z at 90.
+`z` the nozzle above it.  Twelve moving bodies each declare the freedoms
+they have -- the effector three `Prismatic`s, each carriage one, each
+motor pulley one `Revolute`, each rod four (spin about its own axis,
+lean from vertical, swing toward the effector, rise with its carriage)
+-- and two relations state what drives them: `x`, `y` and `z` drive the
+effector's three coordinates directly, and, several sources at once
+(`solid-node`'s ADR-100), the same three drive every tower's height and
+every rod's four freedoms through the delta kinematics
+(`solid_node.mechanisms.delta_carriage`/`delta_rod`), the law called
+once per copy under `.repeat()`'s own broadcast.  Each tower's carriage
+block in turn drives its own belt clamp and pulley by two more laws, an
+affine reading of `Loop.anchor`/`Loop.pulley_angle`.  Only the two idler
+bearings and each rod's constant per-copy ball station stay hand-turned
+in `render()`/`simulate()`, the first because a shared fastener class
+cannot yet carry a per-copy joint over a `.repeat()`, the second because
+it is the rods' rest placement and not a freedom.  The instructions
+`Home`, `Center`, `Bed`, `TowerX`, `TowerY` and `TowerZ` move the head.
+Towers are named and placed as Marlin names and places them: X at 210
+degrees, Y at 330, Z at 90.
 
 Knobs (`--set`): `tower_radius` (145, Marlin's DELTA_SMOOTH_ROD_OFFSET,
 centre to the tower face), `vertical_extrusion` (600), `horizontal_extrusion`

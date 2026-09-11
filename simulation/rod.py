@@ -10,6 +10,7 @@ import math
 
 from solid2 import cube
 from solid_node.node import AssemblyNode
+from solid_node.motion.joints import Prismatic, Revolute
 from solid_node.parameters import Length
 
 from simulation import hardware, materials
@@ -70,10 +71,30 @@ class RodEnd(ScadPart):
 
 
 class Rod(AssemblyNode):
+    """joint-composition-order (ADR-093): declared spin, lean, swing,
+    then rise -- innermost first -- so binding all four from one law
+    (`Kossel`'s `delta_rod`) reproduces today's
+    ``T(station) . Rz(azimuth) . Ry(-tilt) . Rz(spin)`` exactly.  Every
+    anchor is the default origin, which is right only because a rod has
+    no rest placement of its own: the carriage-end socket centre a
+    Rod's own frame is drawn about (see the module docstring) IS the
+    point every one of the four freedoms turns or slides about, whatever
+    per-copy station `Kossel.render()` later translates it to
+    (joint-frame-follows-declarer, ADR-097 -- the anchor is read in
+    Rod's own undrawn frame, never the placed one).
+    """
 
     diagonal_rod = Length(min=0)
 
     tube_length = diagonal_rod - Length(2 * hardware.ROD_END_REACH)
+
+    #: About its own axis; from vertical (bound with the POSITIVE lean
+    #: delta_rod returns, the axis carrying today's `-tilt` sign); toward
+    #: the effector; with its carriage.
+    spin = Revolute(axis=(0, 0, 1), unit='deg')
+    lean = Revolute(axis=(0, -1, 0), unit='deg')
+    swing = Revolute(axis=(0, 0, 1), unit='deg')
+    rise = Prismatic(axis=(0, 0, 1), unit='mm')
 
     tube = Tube(length=tube_length)
     ends = RodEnd().repeat(2)

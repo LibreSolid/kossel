@@ -15,7 +15,7 @@ redrawn from where their carriages hold them, three pulleys turned.
 import math
 
 from solid_node.math import asin, cos, sin
-from solid_node.mechanisms import delta_carriage, delta_rod
+from solid_node.mechanisms import delta_carriage as _delta_carriage, delta_rod as _delta_rod
 from solid_node.node import AssemblyNode
 from solid_node.parameters import Length
 from solid_node.simulation import Driver, Instruction
@@ -66,6 +66,44 @@ def _toward(angle, radius, z):
             'z': z}
 
 
+#: multi-source-multi-target-laws (ADR-100): the two laws behind
+#: `(x & y & z).drives(towers.height, law=delta_carriage_law)` and
+#: `(x & y & z).drives((rods.spin, rods.lean, rods.swing, rods.rise),
+#: law=delta_rod)`.  Each is handed the sources' shared owner (`Kossel`
+#: itself, `x`, `y` and `z` all being its own drivers) and the driven
+#: end's owner -- a `Tower` copy for the first, the tuple of one `Rod`
+#: copy repeated four times for the second, `.repeat()`'s own broadcast
+#: calling each once per copy -- and returns a `forward` of exactly the
+#: three source VALUES, in written order, giving back one value or the
+#: four in written order.  `solid_node.mechanisms.delta_carriage` and
+#: `delta_rod` stay the prescribed law of three drivers over three
+#: towers; only the class-level connect() loop that fed them by hand is
+#: gone.
+def delta_carriage_law(sources, tower):
+    kossel = sources[0]
+    angle = TOWER_ANGLES[tower.index]
+
+    def forward(x, y, z):
+        plane = layout.joint_plane(z)
+        return _delta_carriage(x, y, kossel.diagonal_rod, kossel.delta_radius,
+                               angle, plane=plane)
+    return forward
+
+
+def delta_rod(sources, rods):
+    kossel = sources[0]
+    angle = TOWER_ANGLES[rods[0].index // 2]
+
+    def forward(x, y, z):
+        plane = layout.joint_plane(z)
+        tilt, azimuth = _delta_rod(x, y, kossel.diagonal_rod, kossel.delta_radius, angle)
+        spin = asin(sin(azimuth - angle) * cos(tilt))
+        height = _delta_carriage(x, y, kossel.diagonal_rod, kossel.delta_radius,
+                                 angle, plane=plane)
+        return spin, tilt, azimuth, height
+    return forward
+
+
 class Kossel(AssemblyNode):
 
     #: Marlin's DELTA_SMOOTH_ROD_OFFSET: centre to the tower's inner face.
@@ -109,6 +147,23 @@ class Kossel(AssemblyNode):
     power_supply = PowerSupply()
     bowden = BowdenTube()
     filament = Filament()
+
+    #: The effector's three coordinates ARE the drivers.
+    x.drives(effector.slide_x)
+    y.drives(effector.slide_y)
+    z.drives(effector.rise, offset=layout.GLASS_TOP + layout.NOZZLE_DROP)
+
+    #: multi-source-multi-target-laws (ADR-100): the delta kinematics
+    #: read all three drivers and drive three towers' heights and six
+    #: rods' four freedoms each, the law called once per copy under the
+    #: `.repeat()` broadcast (repeat-fan-out, ADR-096).  These replace
+    #: the per-tower `connect(height, tower.height)` loop and the six
+    #: rods' rotate/rotate/rotate/translate chains this project deferred
+    #: at stage A; the per-rod station translate stays, in `render()`
+    #: now (see below), because it is the rest placement and not a
+    #: freedom.
+    (x & y & z).drives(towers.height, law=delta_carriage_law)
+    (x & y & z).drives((rods.spin, rods.lean, rods.swing, rods.rise), law=delta_rod)
 
     #: The extruder hangs on the front top beam, between towers X and Y;
     #: the power supply on the rear-left bottom beams, between Z and X.
@@ -176,16 +231,32 @@ class Kossel(AssemblyNode):
         self.bowden.translate(self.tube_start)
         self.filament.translate(self.filament_entry)
 
+        # each rod's ball hangs at a constant (x, y) per copy: the rest
+        # placement its own class has none of (Rod has no rest
+        # placement of its own; see its docstring), and no freedom --
+        # joint-frame-follows-declarer (ADR-097) means a Rod's own
+        # joints stay anchored at ITS OWN origin (the carriage-end
+        # socket centre) however this translate places it, so this can
+        # live here now instead of Kossel.simulate() (deferred stage A
+        # "Known gap 2": moved once site/own-frame joints made it safe).
+        for index, rod in enumerate(self.rods):
+            angle = TOWER_ANGLES[index // 2]
+            side = -1 if index % 2 == 0 else 1
+            ux, uy = radial(angle)
+            vx, vy = tangential(angle)
+            rod.translate([self.joint_radius * ux + side * BALL_STATION * vx,
+                           self.joint_radius * uy + side * BALL_STATION * vy, 0])
+
     def simulate(self):
         """Put the head where the drivers say and hang everything on it.
 
-        Each tower is told its carriage height; each rod is spun about its
-        own axis so its housings lie along their screws as far as the
-        pose allows, tilted from vertical and swung to the effector, and
-        stood on its carriage ball.
+        The three relations declared above put the effector, the
+        towers' heights and the six rods' four freedoms each from the
+        drivers alone; this keeps only what they cannot reach -- the
+        Bowden tube and the filament, which follow the head but are not
+        driven coordinates of any declared joint.
         """
         plane = layout.joint_plane(self.z)
-        self.effector.translate([self.x, self.y, plane])
 
         # the tube's far end: the effector push-fit's seat, read in the
         # tube's own frame; the filament's, in the strand's
@@ -199,21 +270,3 @@ class Kossel(AssemblyNode):
         self.connect(self.y - entry[1], self.filament.head_y)
         self.connect(seat - entry[2], self.filament.head_z)
         self.connect(melt - entry[2], self.filament.melt_z)
-
-        for index, (tower, angle) in enumerate(zip(self.towers, TOWER_ANGLES)):
-            height = delta_carriage(self.x, self.y, self.diagonal_rod,
-                                    self.delta_radius, angle, plane=plane)
-            self.connect(height, tower.height)
-
-            tilt, azimuth = delta_rod(self.x, self.y, self.diagonal_rod,
-                                      self.delta_radius, angle)
-            spin = asin(sin(azimuth - angle) * cos(tilt))
-            ux, uy = radial(angle)
-            vx, vy = tangential(angle)
-            for side, rod in zip((-1, 1), self.rods[2 * index:2 * index + 2]):
-                (rod.rotate(spin, [0, 0, 1])
-                 .rotate(-tilt, [0, 1, 0])
-                 .rotate(azimuth, [0, 0, 1])
-                 .translate([self.joint_radius * ux + side * BALL_STATION * vx,
-                             self.joint_radius * uy + side * BALL_STATION * vy,
-                             height]))
